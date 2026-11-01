@@ -6,24 +6,46 @@
 
 ## 一、安装
 
-在节点 VPS 上用 root 执行：
+面板地址默认是 `https://api10.seox9.com`，不用填。
+
+### 方式 1：一条命令（推荐）
+
+在节点 VPS 上用 root 执行，把 `你的密钥` 和最后的 `节点ID` 换掉：
+
+```bash
+KEY=你的密钥 bash <(curl -fsSL https://raw.githubusercontent.com/acc66/vless-ban/main/vless-ban.sh) install 节点ID
+```
+
+装完会问白名单和 CDN，不需要的话直接回车两次。想完全不问：
+
+```bash
+KEY=你的密钥 ALLOW="" CDN=n bash <(curl -fsSL https://raw.githubusercontent.com/acc66/vless-ban/main/vless-ban.sh) install 节点ID
+```
+
+建议把这条命令存在自己的笔记里，以后装新节点只改节点 ID。
+
+密钥没有写进脚本：仓库是公开的，写进去别人就能拿到它，冒充节点拉走全部用户。
+
+### 方式 2：菜单
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/acc66/vless-ban/main/vless-ban.sh)
 ```
 
-选 `1. 安装`，按提示填：
+选 `1. 安装`，输入密钥（输入时不显示）和节点 ID。
 
 | 提示 | 填什么 |
 | --- | --- |
-| 面板地址 | Xboard 面板网址，如 `https://panel.example.com` |
 | 面板通讯密钥 | 面板 → 系统设置 → 服务端 → 通讯密钥 |
 | 节点 ID | 面板节点列表里的 ID |
-| 内核 | 直接回车（auto） |
-| 白名单 IP | 你自己电脑 / 手机的公网 IP，防止测试时把自己拉黑 |
-| 走 CDN 吗 | 节点域名开了 Cloudflare 小黄云选 `y`，否则 `n` |
+| 白名单 IP | 你自己电脑 / 手机的公网 IP，防止测试时把自己拉黑；回车跳过 |
+| 走 CDN 吗 | 节点域名开了 Cloudflare 小黄云选 `y`，回车 = 没开 |
+
+内核不用选，脚本固定用 `auto`：vless / vmess / trojan + ws 用 sing-box，ss + v2ray-plugin 自动切到 xray。两个内核都支持拉黑，效果一样。
 
 最后显示 `服务运行中` 和 `guard: enabled ... path=/mm` 就成功了。
+
+换面板时在命令前加 `PANEL=https://新面板地址`。
 
 ## 二、面板设置
 
