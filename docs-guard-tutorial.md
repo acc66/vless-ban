@@ -1,151 +1,103 @@
-# 防探测拉黑部署教程
+# vless-ban 一键安装教程
 
-把 XboardNode-Plus 换成带 guard 的版本：访问错误的 ws 路径（比如不是 `/mm`）就拉黑 IP，返回 nginx 默认页。规则和原理见 [docs-guard.md](docs-guard.md)。
+功能：节点的 ws 路径（比如 `/mm`）以外的访问一律拉黑 IP，并返回 nginx 默认页（蜜罐）。正常用户不受影响。规则细节见 [docs-guard.md](docs-guard.md)。
 
-以下命令在节点 VPS（Linux，root）上执行。
+不需要装 Go，程序由 GitHub 自动编译好，脚本直接下载。
 
-## 1. 编译
+## 一、安装
 
-需要 Go 1.26 或更高版本。
-
-```bash
-# 安装 Go（已安装可跳过；arm64 机器把 amd64 换成 arm64）
-cd /tmp
-curl -LO https://go.dev/dl/go1.26.0.linux-amd64.tar.gz
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.26.0.linux-amd64.tar.gz
-export PATH=/usr/local/go/bin:$PATH
-
-# 拉代码并编译
-git clone https://github.com/acc66/vless-ban.git
-cd vless-ban
-make build-linux          # arm64 机器用 make build-linux-arm64
-ls -lh xboard-node-linux-amd64 xbctl-linux-amd64
-```
-
-内存小于 1G 的机器编译可能被 OOM，可以在别的机器上编译好，再把 `xboard-node-linux-amd64` 和 `xbctl-linux-amd64` 传上来。
-
-## 2. 安装
-
-### 全新安装
+在节点 VPS 上用 root 执行：
 
 ```bash
-bash install.sh \
-  --panel https://你的面板地址 \
-  --token 面板通讯密钥 \
-  --node-id 节点ID \
-  --binary ./xboard-node-linux-amd64 \
-  --xbctl-binary ./xbctl-linux-amd64
+bash <(curl -fsSL https://raw.githubusercontent.com/acc66/vless-ban/main/vless-ban.sh)
 ```
 
-### 已经装过原版
+选 `1. 安装`，按提示填：
 
-只替换程序，配置不动：
+| 提示 | 填什么 |
+| --- | --- |
+| 面板地址 | Xboard 面板网址，如 `https://panel.example.com` |
+| 面板通讯密钥 | 面板 → 系统设置 → 服务端 → 通讯密钥 |
+| 节点 ID | 面板节点列表里的 ID |
+| 内核 | 直接回车（auto） |
+| 白名单 IP | 你自己电脑 / 手机的公网 IP，防止测试时把自己拉黑 |
+| 走 CDN 吗 | 节点域名开了 Cloudflare 小黄云选 `y`，否则 `n` |
 
-```bash
-systemctl stop xboard-node
-install -m 755 xboard-node-linux-amd64 /usr/local/bin/xboard-node
-install -m 755 xbctl-linux-amd64 /usr/local/bin/xbctl
-```
+最后显示 `服务运行中` 和 `guard: enabled ... path=/mm` 就成功了。
 
-注意：以后不要直接运行 `install.sh upgrade`，否则会下载原版程序覆盖掉。
+## 二、面板设置
 
-## 3. 开启 guard
+节点要满足：
 
-编辑 `/etc/XboardNode-Plus/config.yml`，在最外层（和 `panel:`、`kernel:` 同级）加上：
+- 协议 `vless` / `vmess` / `trojan`，传输方式 `ws`，**不开 TLS**
+- 或 `shadowsocks` + 插件 `v2ray-plugin`，插件参数 `mode=websocket;path=/mm;host=你的host`（客户端插件加 `mux=0`）
 
-```yaml
-guard:
-  enabled: true
-  blacklist: "/etc/XboardNode-Plus/blacklist.txt"
-  allow: "你自己的IP"        # 多个用逗号分隔，防止测试时把自己拉黑
-```
+不满足的节点（开了 TLS、tcp、hysteria 等）照常运行，只是不拉黑。
 
-重启：
-
-```bash
-systemctl restart xboard-node
-journalctl -u xboard-node -n 50 | grep guard
-```
-
-看到类似下面这行就说明生效了：
-
-```
-guard: enabled tag=vless:2086 listen=:2086 path=/mm ... banned=0
-```
-
-如果看到 `guard: not guarding node reason=...`，表示这个节点不适用（比如开了 TLS），会按原方式运行。
-
-## 4. 面板与客户端设置
-
-面板节点：传输协议选 `ws`，路径填 `/mm`（或你自定义的路径），**不要开 TLS**。
-
-客户端节点示例（就是你现在用的这条）：
+客户端示例（就是你现在这条）：
 
 ```
 gcp1.help600.com;2086;0;ws;;path=/mm|server=gcp1.help600.com|host=xg2.apple9.org|outside_port=2086
 ```
 
-路径必须和面板完全一致，`/mm`、`/mm/`、`/MM` 是三个不同的路径。
+## 三、自定义路径
 
-ss 节点：插件用 `v2ray-plugin`，参数类似 `mode=websocket;path=/mm;host=xg2.apple9.org`，客户端插件要加 `mux=0`。
+`/mm` 可以随便改，脚本和程序里没有写死：
 
-## 5. 自定义路径
+1. 面板编辑节点，把 ws 路径改成比如 `/a8f3k2x9`
+2. 节点几十秒内自动同步，拉黑规则跟着换成新路径，不用重启
+3. 客户端更新订阅
 
-`/mm` 不是写死的。guard 直接用面板里节点的 ws 路径，改面板就行：
+建议用长一点的随机路径。不要用 `/`，否则扫描器访问首页不会被拉黑。
 
-1. 面板编辑节点，把路径改成比如 `/a8f3k2x9`。
-2. 节点下次同步配置时（几十秒内）guard 自动切换到新路径，不用重启。
-3. 客户端更新订阅，换成新路径。
+## 四、测试
 
-建议：
-
-- 用长一点的随机路径，比如 `/a8f3k2x9`，扫描器很难猜中。
-- 不要用 `/`。路径是 `/` 时，探测 `/` 只会拿到蜜罐页，不会被拉黑。
-- `?ed=2048` 这类参数可以加，guard 匹配时会忽略问号后面的部分。
-
-## 6. 验证
-
-用一台**不在 allow 列表里**的机器（或手机流量）测试：
+用一台**不在白名单里**的机器（或手机开流量热点）：
 
 ```bash
 curl -i http://节点IP:2086/
 ```
 
-返回 `Server: nginx/1.18.0` 和 `Welcome to nginx!` 页面；再执行一次会直接断开（已被拉黑）。
+1. 第一次返回 `Server: nginx/1.18.0` 和 `Welcome to nginx!` 页面
+2. 再执行一次直接断开，说明已被拉黑
 
-在节点上查看：
+再运行脚本选 `5. 查看黑名单`，能看到这个 IP、时间和它访问的路径。
+
+最后用客户端正常连接，确认能上网。
+
+## 五、日常管理
+
+再次运行安装命令就是管理菜单：
+
+```
+ 1. 安装
+ 2. 升级（保留配置和黑名单）
+ 3. 修改白名单 / CDN 设置
+ 4. 查看状态和拉黑日志
+ 5. 查看黑名单
+ 6. 解封 IP
+ 7. 清空黑名单
+ 8. 关闭拉黑功能
+ 9. 卸载
+```
+
+也可以直接带参数：
 
 ```bash
-cat /etc/XboardNode-Plus/blacklist.txt
-# 1.2.3.4 # 2026-11-01 13:00:00 vless:2086 GET /
-
-journalctl -u xboard-node -f | grep guard     # 实时看拉黑日志
+S=https://raw.githubusercontent.com/acc66/vless-ban/main/vless-ban.sh
+bash <(curl -fsSL $S) status   # 状态和日志
+bash <(curl -fsSL $S) list     # 黑名单
+bash <(curl -fsSL $S) unban    # 解封
+bash <(curl -fsSL $S) upgrade  # 升级
 ```
 
-然后用客户端正常连接，确认能上网、面板在线 IP 显示的是真实 IP。
+黑名单文件是 `/etc/XboardNode-Plus/blacklist.txt`，每行一个 IP，手动删行也能解封，5 秒内生效。
 
-## 7. 解封
+## 六、走 Cloudflare CDN 的注意事项
 
-```bash
-# 解封一个 IP：删掉对应行，5 秒内生效，不用重启
-sed -i '/^1\.2\.3\.4 /d' /etc/XboardNode-Plus/blacklist.txt
+开了小黄云时，节点看到的是 Cloudflare 的 IP。安装时「走 CDN 吗」一定要选 `y`，否则会把 CF 的 IP 拉黑，所有用户断线。
 
-# 全部解封
-rm /etc/XboardNode-Plus/blacklist.txt
-```
-
-## 8. 走 Cloudflare CDN 时
-
-如果 `xg2.apple9.org` 开了小黄云，节点看到的来源 IP 是 Cloudflare 的。不改配置会把 CF 的 IP 拉黑，所有用户断线。
-
-```yaml
-guard:
-  enabled: true
-  blacklist: "/etc/XboardNode-Plus/blacklist.txt"
-  real_ip_header: "CF-Connecting-IP"
-```
-
-同时要用防火墙让这个端口只接受 Cloudflare 回源，否则别人可以直连并伪造这个头：
+选 `y` 后程序按 `CF-Connecting-IP` 头里的真实 IP 拉黑。这个头别人直连时可以伪造，所以最好让端口只接受 Cloudflare 回源：
 
 ```bash
 for ip in $(curl -s https://www.cloudflare.com/ips-v4); do
@@ -154,8 +106,12 @@ done
 iptables -A INPUT -p tcp --dport 2086 -j DROP
 ```
 
-不确定有没有走 CDN，可以先用 `no_ban: true` 试运行：只返回蜜罐页不拉黑，观察日志里 `guard: probe ip=...` 是不是 CF 的 IP。
+不确定有没有走 CDN：先选 `n` 安装后马上选 `4` 看日志，`guard: probe ip=` 后面如果是 `104.`、`172.64.` 这类 Cloudflare 段，就选 `3` 改成走 CDN，再选 `7` 清空黑名单。
 
-## 9. 关闭
+## 七、常见问题
 
-把 `enabled: true` 改成 `false`（或删掉整个 `guard:` 段），`systemctl restart xboard-node`，恢复成内核直接监听。
+**自己被拉黑了**：换个网络运行脚本选 `6` 解封，再选 `3` 把自己的 IP 加进白名单。家宽 IP 会变，变了要重新加。
+
+**日志里没有 `guard: enabled`**：节点开了 TLS 或不是 ws，看日志里 `guard: not guarding node reason=` 的原因。
+
+**已经装过原版 XboardNode-Plus**：直接选 `1` 安装会覆盖成本版本，或选 `2` 升级。注意之后不要再用原版的安装命令升级，会被换回原版。

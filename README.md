@@ -4,6 +4,14 @@ Node backend for [Xboard](https://github.com/cedar2025/Xboard), based on [cedar2
 
 > **Disclaimer**: This project is for educational and learning purposes only.
 
+## 一键安装（防探测拉黑版）
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/acc66/vless-ban/main/vless-ban.sh)
+```
+
+错误 ws 路径（如非 `/mm`）访问即拉黑 IP + 返回 nginx 蜜罐页。中文教程：[docs-guard-tutorial.md](docs-guard-tutorial.md)
+
 ## Features
 
 - Protocols: VMess, VLESS, Trojan, Shadowsocks, Hysteria/Hysteria2, TUIC, AnyTLS, Naive, SOCKS, HTTP, Mieru

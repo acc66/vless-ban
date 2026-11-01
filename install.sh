@@ -28,7 +28,7 @@ DEFAULT_ACTION="install"
 DEFAULT_RELEASE_VERSION="latest"
 DEFAULT_LOG_LEVEL="info"
 DEFAULT_KERNEL_LOG_LEVEL="warn"
-DEFAULT_DOWNLOAD_BASE="https://github.com/xboardnext999/XboardNode-Plus/releases"
+DEFAULT_DOWNLOAD_BASE="https://github.com/acc66/vless-ban/releases"
 
 ACTION="${DEFAULT_ACTION}"
 MODE=""
