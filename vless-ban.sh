@@ -109,8 +109,16 @@ restart_and_check() {
 show_guard_log() {
     echo
     echo "---- 拉黑相关日志（最近 20 条）----"
-    journalctl -u "$SERVICE" --no-pager -n 500 2>/dev/null | grep "guard" | tail -20 || true
-    if ! journalctl -u "$SERVICE" --no-pager -n 500 2>/dev/null | grep -q "guard: enabled"; then
+    # 只看本次启动以来的日志；先存变量再匹配，避免 pipefail + grep -q 的 SIGPIPE 误判
+    local inv logs
+    inv=$(systemctl show -p InvocationID --value "$SERVICE" 2>/dev/null || true)
+    if [ -n "$inv" ]; then
+        logs=$(journalctl --no-pager "_SYSTEMD_INVOCATION_ID=${inv}" 2>/dev/null | grep "guard" || true)
+    else
+        logs=$(journalctl -u "$SERVICE" --no-pager -n 5000 2>/dev/null | grep "guard" || true)
+    fi
+    [ -n "$logs" ] && printf '%s\n' "$logs" | tail -20
+    if [[ "$logs" != *"guard: enabled"* ]]; then
         yellow "还没看到 guard: enabled。可能节点还在同步配置，或节点不适用（开了 TLS / 不是 ws）"
         yellow "稍等片刻后选 4 再看一次"
     fi

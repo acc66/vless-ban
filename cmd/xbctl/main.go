@@ -1167,7 +1167,7 @@ func latestInstanceID(instances []*config.Config) string {
 func regenerateServiceFile() error {
 	unit := fmt.Sprintf(`[Unit]
 Description=Xboard Node Backend
-Documentation=https://github.com/xboardnext999/XboardNode-Plus
+Documentation=https://github.com/acc66/vless-ban
 After=network-online.target
 Wants=network-online.target
 

@@ -611,7 +611,7 @@ render_service() {
     cat >"$TMP_DIR/${SERVICE_NAME}" <<EOF_UNIT
 [Unit]
 Description=Xboard Node Backend
-Documentation=https://github.com/xboardnext999/XboardNode-Plus
+Documentation=https://github.com/acc66/vless-ban
 After=network-online.target
 Wants=network-online.target
 
