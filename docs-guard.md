@@ -2,6 +2,8 @@
 
 参考 [ws-tunnel-pro](https://github.com/acc66/ws-tunnel-pro)：在非 TLS 的 WebSocket 节点前面加一层过滤，探测者访问错误路径即拉黑 IP，并返回 nginx 默认页（蜜罐）。
 
+部署步骤见 [docs-guard-tutorial.md](docs-guard-tutorial.md)。
+
 ## 规则
 
 | 请求 | 处理 |
